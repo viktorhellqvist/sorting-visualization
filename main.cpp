@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <cstring>
 
 #include <shaderLoader.h>
 
@@ -58,11 +59,39 @@ GLFWwindow* createWindow()
     return window;
 }
 
-void processInput(GLFWwindow* window)
+void processInput(GLFWwindow* window, bool& run, int& milliWait)
 {
+    static bool spacePressed = false, rightPressed = false, leftPressed = false;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !spacePressed) {
+        // Start and stop sorting with space
+        spacePressed = true;
+        run = !run;
+        cout << "Space pressed!" << endl;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE && spacePressed) {
+        // Start and stop sorting with space
+        spacePressed = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && !rightPressed) {
+        rightPressed = true;
+        milliWait -= milliWait * 0.5;
+        cout << "Right arrow pressed!" << endl;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE && rightPressed) {
+        rightPressed = false;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && !leftPressed) {
+        leftPressed = true;
+        milliWait += milliWait * 0.5;
+        cout << "Left arrow pressed!" << endl;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE && leftPressed) {
+        leftPressed = false;
+    }
+
 }
 
 std::vector<glm::vec3> getStapleVertices(std::vector<float>& values)
@@ -108,7 +137,6 @@ std::vector<glm::vec3> genColors(int size, int index)
         {1.0f, 1.0f, 1.0f},
         {1.0f, 1.0f, 1.0f}
     };
-
 
     std::vector<glm::vec3> res{};
     for (int i = 0; i < size; i++) {
@@ -160,8 +188,28 @@ bool sortIt(std::vector<float>& values, std::vector<glm::vec3>& vertices, std::v
     return true;
 }
 
-int main(void)
+int main(int argc, char* argv[])
 {
+    int valuesSize = 10;
+    // Read command line arguments
+    if (argc == 2) {
+        if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0) {
+            cout << "Give any integer as argument to control how many values to sort\nStart and stop sorting "
+                << "with spacebar." << endl;
+        }
+        else {
+            bool isNumber = true;
+            for (int i = 0; i < argv[1][i] != '\0'; i++) {
+                if (!isdigit(argv[1][i]) || i > 9) {
+                    isNumber = false;
+                    break;
+                }
+            }
+            if (isNumber) {
+                valuesSize = atoi(argv[1]);
+            }
+        }
+    }
     GLFWwindow* window = createWindow();
 
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
@@ -172,8 +220,8 @@ int main(void)
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
 
-    // 0.1, 0.2, 0.4, 0.6, 0.7
-    std::vector<float> values{ 1, 0, 0.2, 0.6, 0.4, 0.7, 0.15, 0.72, 0.55 };
+    std::vector<float> values(valuesSize);
+    for (int i = 0; i < values.size(); i++) { values[i] = static_cast<float>(rand()) / RAND_MAX; }
     auto vertices = getStapleVertices(values);
 
     GLuint vertexBufferID;
@@ -190,16 +238,15 @@ int main(void)
 
     Shader shader = Shader("vertexShader.glsl", "fragmentShader.glsl");
 
-    // cout << "asd " << vertices.size() / values.size() << endl;
-    // cout << "Vertices size" << vertices.size() << endl;
-    // cout << "Colors size" << colors.size() << endl;
-
     auto lastTime = high_resolution_clock::now();
+    bool runSort = false;
+    int milliWait = 200;
 
     while (!glfwWindowShouldClose(window)) {
-        if (duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - lastTime).count() >= 100) {
+        if (duration_cast<std::chrono::milliseconds>(high_resolution_clock::now() - lastTime).count() >= milliWait) {
             lastTime = high_resolution_clock::now();
-            if (sortIt(values, vertices, colors)) {
+            if (runSort) {
+                runSort = sortIt(values, vertices, colors);
                 glBindBuffer(GL_ARRAY_BUFFER, vertexBufferID);
                 glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), &vertices[0], GL_DYNAMIC_DRAW);
                 glBindBuffer(GL_ARRAY_BUFFER, colorBufferID);
@@ -223,7 +270,7 @@ int main(void)
 
         glfwSwapBuffers(window);
         glfwPollEvents();
-        processInput(window);
+        processInput(window, runSort, milliWait);
     }
 
     glfwTerminate();
