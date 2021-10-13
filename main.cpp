@@ -19,7 +19,7 @@ static const int height = width / 4 * 3;
 
 /**
  * Initialize glfw and glew and make a glfw window.
- * Returns nullptr if initialization fails.
+ * Returns null if initialization fails.
  */
 GLFWwindow* createWindow()
 {
@@ -69,7 +69,6 @@ void processInput(GLFWwindow* window, bool& run, int& milliWait)
         // Start and stop sorting with space
         spacePressed = true;
         run = !run;
-        cout << "Space pressed!" << endl;
     }
     else if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE && spacePressed) {
         // Start and stop sorting with space
@@ -78,7 +77,6 @@ void processInput(GLFWwindow* window, bool& run, int& milliWait)
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && !rightPressed) {
         rightPressed = true;
         milliWait -= milliWait * 0.5;
-        cout << "Right arrow pressed!" << endl;
     }
     else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_RELEASE && rightPressed) {
         rightPressed = false;
@@ -86,7 +84,6 @@ void processInput(GLFWwindow* window, bool& run, int& milliWait)
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && !leftPressed) {
         leftPressed = true;
         milliWait += milliWait * 0.5;
-        cout << "Left arrow pressed!" << endl;
     }
     else if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_RELEASE && leftPressed) {
         leftPressed = false;
@@ -106,12 +103,12 @@ std::vector<glm::vec3> getStapleVertices(std::vector<float>& values)
         float x2 = -1 + width * (i + 1) - space;
 
         glm::vec3 arr[] = {
-            {x1, -1, 0},  // BL
+            {x1, -1, 0}, // BL
             {x1, y, 0},  // TL
-            {x2, -1, 0},  // BR
-            {x2, -1, 0},  // BR
+            {x2, -1, 0}, // BR
+            {x2, -1, 0}, // BR
             {x1, y, 0},  // TL
-            {x2, y, 0}  // TR
+            {x2, y, 0}   // TR
         };
         res.insert(res.end(), std::begin(arr), std::end(arr));
     }
@@ -150,37 +147,40 @@ std::vector<glm::vec3> genColors(int size, int index)
     return res;
 }
 
-// Returns -1 if sorting is done
-int bubbelOneIt(std::vector<float>& values)
+// Returns true if change was made
+bool bubbelOneIt(std::vector<float>& values, int& index)
 {
-    static int index = 0;
     static bool changed = false;
+    bool r = false;
 
     // Change places of value[index] and value[index + 1]
     if (values[index] > values[index + 1]) {
         changed = true;
+        r = true;
         std::swap(values[index], values[index + 1]);
     }
 
     index++;
     if (index == values.size() - 1) {
         if (!changed) return -1;
+        changed = false;
         index = 0;
     }
-    return index;
+    return r;
 }
 
 bool sortIt(std::vector<float>& values, std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& colors)
 {
     static bool v = true;
-    static int index;
+    static int index = 0;
 
     if (v) {
-        index = bubbelOneIt(values);
+        // Set v so if no change was made by sort iteration we update colors
+        v = bubbelOneIt(values, index);
         if (index == -1) return false;
         vertices = getStapleVertices(values);
     }
-    else {
+    if (!v) {
         colors = genColors(values.size(), index);
     }
 
@@ -195,11 +195,11 @@ int main(int argc, char* argv[])
     if (argc == 2) {
         if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "-help") == 0) {
             cout << "Give any integer as argument to control how many values to sort\nStart and stop sorting "
-                << "with spacebar." << endl;
+                << "with spacebar and change speed with the arrow keys." << endl;
         }
         else {
             bool isNumber = true;
-            for (int i = 0; i < argv[1][i] != '\0'; i++) {
+            for (int i = 0; argv[1][i] != '\0'; i++) {
                 if (!isdigit(argv[1][i]) || i > 9) {
                     isNumber = false;
                     break;
@@ -254,7 +254,6 @@ int main(int argc, char* argv[])
             }
         }
 
-        // TODO: use element buffer (indices of vertex to avoid duplicate)
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(shader.ID);
 
